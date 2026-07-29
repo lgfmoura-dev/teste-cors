@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste de acesso — Rotina Diária</title>
+<style>
+  :root{ --ok:#1a7f37; --bad:#b3261e; --wait:#8a6d00; --line:#d8d8d8; --mut:#666; }
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:760px;margin:0 auto;padding:20px 16px 60px;color:#1a1a1a;line-height:1.5}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 20px}
+  button{font:inherit;font-weight:600;padding:10px 20px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;border-radius:6px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  .t{margin-top:22px;border-top:1px solid var(--line)}
+  .r{border-bottom:1px solid var(--line);padding:11px 0;display:flex;gap:12px;align-items:flex-start}
+  .st{font-size:20px;line-height:1.2;width:24px;flex:none;text-align:center}
+  .bd{flex:1;min-width:0}
+  .nm{font-weight:600;font-size:14px}
+  .ep{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--mut);word-break:break-all;margin-top:2px}
+  .ms{font-size:13px;margin-top:4px}
+  .ms.ok{color:var(--ok)} .ms.bad{color:var(--bad)} .ms.wait{color:var(--wait)}
+  .note{font-size:12px;color:var(--mut);margin-top:3px}
+  #verdict{margin-top:24px;padding:16px;border:2px solid var(--line);border-radius:8px;display:none}
+  #verdict h2{font-size:15px;margin:0 0 8px}
+  #verdict p{margin:0 0 8px;font-size:14px}
+  #verdict.good{border-color:var(--ok)} #verdict.bad{border-color:var(--bad)}
+  .foot{margin-top:28px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:12px}
+  code{background:#f2f2f2;padding:1px 5px;border-radius:3px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>Teste de acesso às fontes</h1>
+<p class="sub">Descobre se uma página no navegador consegue ler as APIs do Congresso.
+Este teste decide se o app pode ser só uma página web ou se precisa de servidor.</p>
+
+<button id="go">Rodar teste</button>
+
+<div class="t" id="rows"></div>
+
+<div id="verdict"></div>
+
+<p class="foot">
+  <b>Importante:</b> este teste precisa rodar a partir de um endereço <code>https://</code>.
+  Se você abrir o arquivo direto do aparelho (endereço começando com <code>file://</code>),
+  tudo vai falhar por outro motivo e o resultado não vale.
+</p>
+
+<script>
+var TESTES = [
+  { nome: "API do Senado — lista de PLN do ano",
+    url: "https://legis.senado.leg.br/dadosabertos/processo?sigla=PLN&ano=2026",
+    tipo: "api", blocos: "blocos 3 e 4",
+    valida: function(t){ var d=JSON.parse(t); return Array.isArray(d) && d.length>0 ? d.length+" matérias recebidas" : null; } },
+
+  { nome: "API do Senado — tramitação de uma matéria",
+    url: "https://legis.senado.leg.br/dadosabertos/processo/9053447",
+    tipo: "api", blocos: "bloco 3 (o principal)",
+    valida: function(t){ var d=JSON.parse(t);
+      var n=(d.autuacoes&&d.autuacoes[0]&&d.autuacoes[0].informesLegislativos||[]).length;
+      return d.identificacao ? d.identificacao+" · "+n+" informes de tramitação" : null; } },
+
+  { nome: "API da Câmara — agenda da CMO",
+    url: "https://dadosabertos.camara.leg.br/api/v2/orgaos/6855/eventos?dataInicio=2026-06-01&dataFim=2026-12-31&itens=20",
+    tipo: "api", blocos: "bloco 2 (agenda)",
+    valida: function(t){ var d=JSON.parse(t); return d.dados ? d.dados.length+" reuniões recebidas" : null; } },
+
+  { nome: "Página HTML da CMO — matérias em tramitação",
+    url: "https://www.congressonacional.leg.br/web/cmo/materias/materias-em-tramitacao",
+    tipo: "html", blocos: "requerimentos da CMO",
+    valida: function(t){ return t.length>1000 ? "página lida ("+Math.round(t.length/1000)+" mil caracteres)" : null; } }
+];
+
+function el(tag, cls, txt){ var e=document.createElement(tag); if(cls)e.className=cls; if(txt)e.textContent=txt; return e; }
+
+document.getElementById('go').addEventListener('click', function(){
+  var btn=this; btn.disabled=true; btn.textContent="Testando...";
+  var box=document.getElementById('rows'); box.innerHTML='';
+  var v=document.getElementById('verdict'); v.style.display='none'; v.className='';
+  var res=[]; var pend=TESTES.length;
+
+  TESTES.forEach(function(t, i){
+    var row=el('div','r');
+    var st=el('div','st','⏳');
+    var bd=el('div','bd');
+    bd.appendChild(el('div','nm',t.nome));
+    bd.appendChild(el('div','ep',t.url));
+    var ms=el('div','ms wait','testando...');
+    bd.appendChild(ms);
+    bd.appendChild(el('div','note','usado para: '+t.blocos));
+    row.appendChild(st); row.appendChild(bd); box.appendChild(row);
+
+    var ctrl=new AbortController();
+    var to=setTimeout(function(){ ctrl.abort(); }, 20000);
+
+    fetch(t.url, { signal: ctrl.signal })
+      .then(function(r){
+        clearTimeout(to);
+        if(!r.ok) throw new Error("o servidor respondeu com erro "+r.status);
+        return r.text();
+      })
+      .then(function(txt){
+        var det;
+        try { det = t.valida(txt); } catch(e){ det = null; }
+        if(det===null) throw new Error("respondeu, mas o conteúdo não veio como esperado");
+        st.textContent='✅';
+        ms.className='ms ok'; ms.textContent='FUNCIONA — '+det;
+        res[i]={ok:true, tipo:t.tipo};
+      })
+      .catch(function(e){
+        clearTimeout(to);
+        st.textContent='❌';
+        ms.className='ms bad';
+        ms.textContent = (e.name==='AbortError')
+          ? 'BLOQUEADO — sem resposta em 20 segundos'
+          : 'BLOQUEADO — '+e.message+' (provavelmente CORS: o servidor não autoriza leitura por outro site)';
+        res[i]={ok:false, tipo:t.tipo};
+      })
+      .then(function(){
+        pend--;
+        if(pend===0) veredito(res);
+      });
+  });
+});
+
+function veredito(res){
+  var apis = res.filter(function(r){return r.tipo==='api';});
+  var apisOk = apis.filter(function(r){return r.ok;}).length;
+  var v = document.getElementById('verdict');
+  v.style.display='block';
+  var h = '<h2>Veredito</h2>';
+
+  if(apisOk === apis.length){
+    v.className='good';
+    h += '<p><b>As três APIs funcionam a partir do navegador.</b> Dá para construir os blocos 3 e 4 — '
+      +  'tramitação das matérias e novos PLN/MPV — e a agenda da CMO como página web pura, '
+      +  'sem Termux, sem Python, sem instalar nada.</p>';
+  } else if(apisOk > 0){
+    v.className='';
+    h += '<p><b>Funciona em parte:</b> '+apisOk+' de '+apis.length+' APIs responderam. '
+      +  'Dá para começar pelos blocos que passaram e deixar os outros marcados como não automatizados.</p>';
+  } else {
+    v.className='bad';
+    h += '<p><b>Nenhuma API respondeu.</b> O caminho da página web pura está fechado — '
+      +  'o app precisa de um programa rodando (Termux no tablet, ou um computador).</p>';
+  }
+
+  h += '<p>Sobre a página HTML da CMO: se ela falhou, era o esperado. '
+    +  'Portais não autorizam leitura por outro site, e é por isso que os blocos 2, 5 e os requerimentos '
+    +  'sempre vão precisar de um programa — mesmo que as APIs funcionem.</p>';
+
+  h += '<p style="margin-bottom:0"><b>Leve este resultado de volta para a conversa.</b> '
+    +  'Ele decide a arquitetura do projeto inteiro.</p>';
+
+  v.innerHTML = h;
+  var b=document.getElementById('go'); b.disabled=false; b.textContent='Rodar de novo';
+}
+</script>
+</body>
+</html>
