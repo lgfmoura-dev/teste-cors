@@ -3,166 +3,136 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Teste de acesso v2 — Rotina Diária</title>
+<title>Teste v3 — por que o Senado devolve vazio?</title>
 <style>
-  :root{ --ok:#1a7f37; --bad:#b3261e; --warn:#8a6d00; --line:#d8d8d8; --mut:#666; }
+  :root{--ok:#1a7f37;--bad:#b3261e;--warn:#8a6d00;--line:#d8d8d8;--mut:#666;}
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:780px;margin:0 auto;padding:20px 16px 60px;color:#1a1a1a;line-height:1.5}
-  h1{font-size:20px;margin:0 0 4px}
-  .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:800px;margin:0 auto;padding:20px 14px 60px;color:#1a1a1a;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
   button{font:inherit;font-weight:600;padding:10px 20px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;border-radius:6px;cursor:pointer}
-  button:disabled{opacity:.5;cursor:default}
-  .t{margin-top:20px;border-top:1px solid var(--line)}
-  .r{border-bottom:1px solid var(--line);padding:11px 0;display:flex;gap:11px;align-items:flex-start}
-  .st{font-size:19px;line-height:1.2;width:22px;flex:none;text-align:center}
-  .bd{flex:1;min-width:0}
-  .nm{font-weight:600;font-size:14px}
-  .ep{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--mut);word-break:break-all;margin-top:2px}
-  .ms{font-size:13px;margin-top:4px;font-weight:600}
-  .ms.ok{color:var(--ok)} .ms.bad{color:var(--bad)} .ms.warn{color:var(--warn)}
-  .dg{font-size:12px;color:var(--mut);margin-top:3px}
-  .peek{font-family:ui-monospace,monospace;font-size:10.5px;background:#f4f4f4;padding:5px 7px;border-radius:4px;margin-top:5px;word-break:break-all;color:#333}
-  #verdict{margin-top:22px;padding:16px;border:2px solid var(--line);border-radius:8px;display:none}
-  #verdict h2{font-size:15px;margin:0 0 8px}
-  #verdict p{margin:0 0 8px;font-size:14px}
-  #verdict.good{border-color:var(--ok)} #verdict.bad{border-color:var(--bad)}
-  .foot{margin-top:26px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:12px}
+  button:disabled{opacity:.5}
+  .r{border-bottom:1px solid var(--line);padding:11px 0}
+  .hd{display:flex;gap:9px;align-items:baseline}
+  .st{font-size:17px;width:20px;flex:none}
+  .nm{font-weight:600;font-size:13.5px;flex:1}
+  .ep{font-family:ui-monospace,monospace;font-size:10px;color:var(--mut);word-break:break-all;margin:3px 0 0 29px}
+  .ms{font-size:13px;font-weight:600;margin:5px 0 0 29px}
+  .ms.ok{color:var(--ok)}.ms.bad{color:var(--bad)}.ms.warn{color:var(--warn)}
+  .peek{font-family:ui-monospace,monospace;font-size:10px;background:#f4f4f4;padding:6px 8px;border-radius:4px;margin:5px 0 0 29px;word-break:break-all;color:#333;max-height:90px;overflow:auto}
+  #v{margin-top:20px;padding:15px;border:2px solid var(--line);border-radius:8px;display:none;font-size:14px}
+  #v h2{font-size:15px;margin:0 0 8px}
+  .top{border-top:1px solid var(--line);margin-top:18px}
   code{background:#f2f2f2;padding:1px 5px;border-radius:3px;font-size:12px}
-  .leg{font-size:12px;color:var(--mut);margin:14px 0 0;padding:10px;border:1px dashed var(--line);border-radius:6px}
 </style>
 </head>
 <body>
 
-<h1>Teste de acesso às fontes — versão 2</h1>
-<p class="sub">Agora separando <b>bloqueio de CORS</b> (o servidor não deixa) de <b>formato errado</b> (o servidor deixa, mas mandou XML em vez de JSON).</p>
+<h1>Teste v3 — por que o Senado devolve vazio?</h1>
+<p class="sub">CORS já está confirmado como liberado. Agora o alvo é outro: descobrir qual variação de endereço
+faz a API do Senado entregar os dados de verdade a partir do navegador.</p>
 
 <button id="go">Rodar teste</button>
 
-<p class="leg">
-  <b>Como ler:</b> se aparecer <i>“Failed to fetch”</i>, é bloqueio de CORS de verdade — caminho fechado.
-  Qualquer outra mensagem significa que o servidor respondeu e o navegador conseguiu ler, ou seja, <b>CORS está liberado</b>
-  e o problema é só de formato, que se resolve.
-</p>
-
-<div class="t" id="rows"></div>
-<div id="verdict"></div>
-
-<p class="foot"><b>Importante:</b> precisa rodar a partir de um endereço <code>https://</code>, nunca <code>file://</code>.</p>
+<div class="top" id="rows"></div>
+<div id="v"></div>
 
 <script>
-var T = [
-  { n:"Senado — lista de PLN (cabeçalho Accept: application/json)",
-    u:"https://legis.senado.leg.br/dadosabertos/processo?sigla=PLN&ano=2026",
-    h:{Accept:"application/json"}, k:"senado", uso:"blocos 3 e 4" },
+var T=[
+ {n:"CONTROLE — lista de senadores (endpoint antigo e simples)",
+  u:"https://legis.senado.leg.br/dadosabertos/senador/lista/atual.json", h:null,
+  o:"Se este vier cheio, a API funciona no navegador e o problema é só do /processo."},
 
-  { n:"Senado — lista de PLN (caminho .json)",
-    u:"https://legis.senado.leg.br/dadosabertos/processo.json?sigla=PLN&ano=2026",
-    h:null, k:"senado", uso:"blocos 3 e 4" },
+ {n:"Lista de PLN — sem cabeçalho nenhum",
+  u:"https://legis.senado.leg.br/dadosabertos/processo?sigla=PLN&ano=2026", h:null,
+  o:"Igual ao que eu faço do meu lado."},
 
-  { n:"Senado — tramitação da MPV 1362/2026 (Accept: application/json)",
-    u:"https://legis.senado.leg.br/dadosabertos/processo/9053447",
-    h:{Accept:"application/json"}, k:"senado", uso:"bloco 3 — o principal" },
+ {n:"Lista de PLN — com parâmetro de versão v=1",
+  u:"https://legis.senado.leg.br/dadosabertos/processo?sigla=PLN&ano=2026&v=1", h:{Accept:"application/json"},
+  o:"Algumas rotas do Senado exigem versão explícita."},
 
-  { n:"Senado — tramitação da MPV 1362/2026 (caminho .json)",
-    u:"https://legis.senado.leg.br/dadosabertos/processo/9053447.json",
-    h:null, k:"senado", uso:"bloco 3 — o principal" },
+ {n:"Lista de PLN — pelo domínio .gov.br",
+  u:"https://legis.senado.gov.br/dadosabertos/processo?sigla=PLN&ano=2026", h:{Accept:"application/json"},
+  o:"O domínio .gov.br pode cair em outro servidor."},
 
-  { n:"Câmara — agenda da CMO (já funcionou no teste 1)",
-    u:"https://dadosabertos.camara.leg.br/api/v2/orgaos/6855/eventos?dataInicio=2026-06-01&dataFim=2026-12-31&itens=20",
-    h:{Accept:"application/json"}, k:"camara", uso:"bloco 2 — agenda" },
+ {n:"Busca MPV 1362/2026 por número",
+  u:"https://legis.senado.leg.br/dadosabertos/processo?sigla=MPV&numero=1362&ano=2026", h:{Accept:"application/json"},
+  o:"Busca específica — do meu lado devolve 1 resultado."},
 
-  { n:"Página HTML da CMO (controle — deve dar Failed to fetch)",
-    u:"https://www.congressonacional.leg.br/web/cmo/materias/materias-em-tramitacao",
-    h:null, k:"html", uso:"requerimentos da CMO" }
+ {n:"Tramitação por id — domínio .gov.br",
+  u:"https://legis.senado.gov.br/dadosabertos/processo/9053447", h:{Accept:"application/json"},
+  o:"Mesmo id que deu 404 no outro domínio."},
+
+ {n:"Tramitação — endpoint de detalhe alternativo",
+  u:"https://legis.senado.leg.br/dadosabertos/processo/9053447/detalhes", h:{Accept:"application/json"},
+  o:"Testando outro caminho de detalhe."}
 ];
 
-function el(t,c,x){var e=document.createElement(t); if(c)e.className=c; if(x)e.textContent=x; return e;}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x)e.textContent=x;return e;}
 
 document.getElementById('go').addEventListener('click',function(){
-  var b=this; b.disabled=true; b.textContent="Testando...";
-  var box=document.getElementById('rows'); box.innerHTML='';
-  var v=document.getElementById('verdict'); v.style.display='none'; v.className='';
-  var res=[]; var pend=T.length;
+  var b=this;b.disabled=true;b.textContent="Testando...";
+  var box=document.getElementById('rows');box.innerHTML='';
+  var vv=document.getElementById('v');vv.style.display='none';
+  var res=[],pend=T.length;
 
   T.forEach(function(t,i){
-    var row=el('div','r'), st=el('div','st','⏳'), bd=el('div','bd');
-    bd.appendChild(el('div','nm',t.n));
-    bd.appendChild(el('div','ep',t.u));
-    var ms=el('div','ms warn','testando...'); bd.appendChild(ms);
-    var dg=el('div','dg','usado para: '+t.uso); bd.appendChild(dg);
-    row.appendChild(st); row.appendChild(bd); box.appendChild(row);
+    var r=el('div','r'),hd=el('div','hd');
+    var st=el('div','st','⏳');hd.appendChild(st);
+    hd.appendChild(el('div','nm',t.n));
+    r.appendChild(hd);
+    r.appendChild(el('div','ep',t.u));
+    var ms=el('div','ms warn','testando...');r.appendChild(ms);
+    r.appendChild(el('div','ep',t.o));
+    box.appendChild(r);
 
-    var ctrl=new AbortController(), to=setTimeout(function(){ctrl.abort();},20000);
-    var opt={signal:ctrl.signal}; if(t.h) opt.headers=t.h;
+    var c=new AbortController(),to=setTimeout(function(){c.abort();},20000);
+    var op={signal:c.signal};if(t.h)op.headers=t.h;
 
-    fetch(t.u,opt).then(function(r){
-      clearTimeout(to);
-      return r.text().then(function(tx){ return {status:r.status, ok:r.ok, body:tx}; });
+    fetch(t.u,op).then(function(x){clearTimeout(to);
+      return x.text().then(function(b){return {s:x.status,ok:x.ok,b:b};});
     }).then(function(o){
-      var head=(o.body||'').trim().slice(0,300);
-      var ehJson = head.charAt(0)==='{' || head.charAt(0)==='[';
-      var ehXml  = head.charAt(0)==='<';
+      var head=(o.b||'').trim();
+      var n=null;
+      try{var d=JSON.parse(head);
+        if(Array.isArray(d)) n=d.length;
+        else if(d&&typeof d==='object'){
+          if(d.identificacao) n='objeto: '+d.identificacao;
+          else { var k=Object.keys(d); n='objeto com chaves: '+k.slice(0,4).join(', '); }
+        }
+      }catch(e){ n=null; }
 
-      if(!o.ok){
-        st.textContent='⚠️'; res[i]={cors:true, dados:false, k:t.k};
-        ms.className='ms warn';
-        ms.textContent='CORS LIBERADO, mas o servidor devolveu erro '+o.status+' — é ajuste de URL, não bloqueio';
-      } else if(ehJson){
-        var det='';
-        try{ var d=JSON.parse(o.body);
-             det = Array.isArray(d) ? (d.length+' itens') : (d.identificacao||'objeto recebido');
-        }catch(e){ det='JSON recebido'; }
-        st.textContent='✅'; res[i]={cors:true, dados:true, k:t.k};
-        ms.className='ms ok'; ms.textContent='FUNCIONA — JSON válido ('+det+')';
-      } else if(ehXml){
-        st.textContent='⚠️'; res[i]={cors:true, dados:false, k:t.k};
-        ms.className='ms warn';
-        ms.textContent='CORS LIBERADO — mas veio XML/HTML em vez de JSON. Dá para resolver.';
+      if(n!==null && n!==0 && o.ok){
+        st.textContent='✅';ms.className='ms ok';
+        ms.textContent='DADOS RECEBIDOS — '+(typeof n==='number'? n+' itens' : n);
+        res[i]={ok:true};
+      } else if(o.ok && n===0){
+        st.textContent='⚠️';ms.className='ms warn';
+        ms.textContent='RESPONDEU VAZIO — status 200, array com 0 itens';
+        res[i]={ok:false,vazio:true};
       } else {
-        st.textContent='⚠️'; res[i]={cors:true, dados:false, k:t.k};
-        ms.className='ms warn'; ms.textContent='CORS LIBERADO — formato inesperado';
+        st.textContent='⚠️';ms.className='ms warn';
+        ms.textContent='status HTTP '+o.s+(o.ok?'':' — sem dados');
+        res[i]={ok:false};
       }
-      if(!res[i].dados) bd.appendChild(el('div','peek','veio assim: '+head.slice(0,160)+'...'));
+      r.appendChild(el('div','peek','RESPOSTA: '+head.slice(0,400)+(head.length>400?'...':'')));
     }).catch(function(e){
       clearTimeout(to);
-      st.textContent='❌'; res[i]={cors:false, dados:false, k:t.k};
-      ms.className='ms bad';
-      ms.textContent = (e.name==='AbortError')
-        ? 'BLOQUEADO — sem resposta em 20s'
-        : 'BLOQUEADO POR CORS — '+e.message;
-    }).then(function(){ if(--pend===0) veredito(res); });
+      st.textContent='❌';ms.className='ms bad';
+      ms.textContent=(e.name==='AbortError')?'sem resposta em 20s':'BLOQUEADO POR CORS — '+e.message;
+      res[i]={ok:false,cors:true};
+    }).then(function(){ if(--pend===0){
+      var bons=res.filter(function(x){return x&&x.ok;}).length;
+      var vv=document.getElementById('v');vv.style.display='block';
+      vv.innerHTML='<h2>Resultado</h2><p><b>'+bons+' de '+T.length+' variações trouxeram dados.</b></p>'
+        +(res[0]&&res[0].ok
+          ? '<p>O controle (lista de senadores) funcionou — então a API do Senado <b>serve dados ao navegador</b>. O problema está restrito à rota <code>/processo</code>, e a variação que funcionou acima é o caminho a usar.</p>'
+          : '<p>O controle também falhou — então não é a rota <code>/processo</code>, é a API do Senado inteira se comportando diferente com o navegador. Nesse caso o bloco 3 precisa de um programa.</p>')
+        +'<p style="margin-bottom:0">Mande a tela inteira de volta, inclusive os quadros cinza com as respostas.</p>';
+      var b=document.getElementById('go');b.disabled=false;b.textContent='Rodar de novo';
+    }});
   });
 });
-
-function veredito(res){
-  var sen = res.filter(function(r){return r.k==='senado';});
-  var senCors = sen.some(function(r){return r.cors;});
-  var senOk   = sen.some(function(r){return r.dados;});
-  var cam = res.filter(function(r){return r.k==='camara';})[0]||{};
-  var v=document.getElementById('verdict'); v.style.display='block';
-  var h='<h2>Veredito</h2>';
-
-  if(senOk && cam.dados){
-    v.className='good';
-    h+='<p><b>Senado e Câmara funcionam no navegador, com JSON válido.</b> Os blocos 3, 4 e a agenda da CMO '
-      +'podem ser feitos como página web pura — sem Termux, sem Python, sem instalar nada.</p>';
-  } else if(senCors && cam.dados){
-    v.className='good';
-    h+='<p><b>CORS está liberado nos dois — o problema é só de formato.</b> Nenhuma linha do Senado deu '
-      +'“Failed to fetch”, o que significa que o navegador conseguiu falar com o servidor. Falta acertar a URL '
-      +'ou o cabeçalho para receber JSON. Isso se resolve; o caminho da página web continua aberto.</p>';
-  } else {
-    v.className='bad';
-    h+='<p><b>Houve bloqueio real de CORS no Senado.</b> O caminho da página web pura está fechado para o bloco 3, '
-      +'que é o principal. O app precisa de um programa rodando.</p>';
-  }
-
-  h+='<p>A página HTML da CMO deve ter dado “Failed to fetch” — esse é o bloqueio verdadeiro, e é definitivo. '
-    +'Blocos 2, 5 e os requerimentos sempre vão precisar de um programa, aconteça o que acontecer com as APIs.</p>';
-  h+='<p style="margin-bottom:0"><b>Leve o resultado de volta para a conversa.</b></p>';
-  v.innerHTML=h;
-  var b=document.getElementById('go'); b.disabled=false; b.textContent='Rodar de novo';
-}
 </script>
 </body>
 </html>
